@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
 
+
 namespace NetSecu_CorrectionAdo
 {
     internal class Program
@@ -66,6 +67,30 @@ namespace NetSecu_CorrectionAdo
             //        Console.WriteLine(moyenne);
             //    }
             //}
+
+            Student student = new Student()
+            {
+                LastName = "Doe",
+                FirstName = "John",
+                BirthDate = new DateTime(1970, 1, 1),
+                YearResult = 16,
+                SectionId = 1010
+            };
+
+            //Exercice Insérer un étudiant
+            using (SqlConnection dbConnection = new SqlConnection())
+            {
+                dbConnection.ConnectionString = CONNECTION_STRING;
+
+                using (SqlCommand dbCommand = dbConnection.CreateCommand())
+                {
+                    dbCommand.CommandText = $"INSERT INTO Student (LastName, FirstName, BirthDate, YearResult, SectionID) OUTPUT inserted.Id VALUES ('{student.LastName}', '{student.FirstName}', '{student.BirthDate:yyyy/MM/dd}', {student.YearResult}, {student.SectionId});";
+                    dbConnection.Open();
+                    student.Id = (int)dbCommand.ExecuteScalar();
+
+                    Console.WriteLine($"Id généré de l'étudiant : {student.Id}");
+                }
+            }
         }
     }
 }
