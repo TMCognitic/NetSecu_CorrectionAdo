@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Data.Common;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
@@ -12,23 +13,29 @@ namespace Tools
     public class Connection
     {
         private readonly string _connectionString;
+        private readonly DbProviderFactory _factory;
 
-        public Connection(string connectionString)
+        public Connection(DbProviderFactory factory, string connectionString)
         {
             _connectionString = connectionString;
+            _factory = factory;
         }
 
-        private static SqlConnection CreateConnection(string connectionString)
+        private static DbConnection CreateConnection(DbProviderFactory factory, string connectionString)
         {
-            SqlConnection dbConnection = new SqlConnection();
+            DbConnection? dbConnection = factory.CreateConnection();
+
+            if (dbConnection is null)
+                throw new InvalidOperationException("the prodiver can't create the connection");
+
             dbConnection.ConnectionString = connectionString;
 
             return dbConnection;
         }
 
-        private static SqlCommand CreateCommand(Command command, SqlConnection dbConnection)
+        private static DbCommand CreateCommand(Command command, DbConnection dbConnection)
         {
-            SqlCommand dbCommand = dbConnection.CreateCommand();                
+            DbCommand dbCommand = dbConnection.CreateCommand();                
             dbCommand.CommandText = command.Query;
             if (command.IsStoredProcedure)
             {
@@ -37,7 +44,7 @@ namespace Tools
 
             foreach (KeyValuePair<string, object> kvp in command.Parameters)
             {
-                SqlParameter dbParameter = dbCommand.CreateParameter();
+                DbParameter dbParameter = dbCommand.CreateParameter();
                 dbParameter.ParameterName = kvp.Key;
                 dbParameter.Value = kvp.Value;
 
@@ -50,10 +57,10 @@ namespace Tools
         public int ExecuteNonQuery(Command command)
         {
             //Créer la connexion
-            using (SqlConnection dbConnection = CreateConnection(_connectionString))
+            using (DbConnection dbConnection = CreateConnection(_factory, _connectionString))
             {
                 //Créer la commande sur base de l'argument recu en paramètre
-                using (SqlCommand dbCommand = CreateCommand(command, dbConnection))
+                using (DbCommand dbCommand = CreateCommand(command, dbConnection))
                 { 
                     //ouvrir la connexion
                     dbConnection.Open();
@@ -66,10 +73,10 @@ namespace Tools
         public object? ExecuteScalar(Command command)
         {
             //Créer la connexion
-            using (SqlConnection dbConnection = CreateConnection(_connectionString))
+            using (DbConnection dbConnection = CreateConnection(_factory, _connectionString))
             {
                 //Créer la commande sur base de l'argument recu en paramètre
-                using (SqlCommand dbCommand = CreateCommand(command, dbConnection))
+                using (DbCommand dbCommand = CreateCommand(command, dbConnection))
                 {
                     //ouvrir la connexion
                     dbConnection.Open();
@@ -80,19 +87,19 @@ namespace Tools
             }
         }
 
-        public IEnumerable<TResult> ExecuteReader<TResult>(Command command, Func<SqlDataReader, TResult> selector)
+        public IEnumerable<TResult> ExecuteReader<TResult>(Command command, Func<DbDataReader, TResult> selector)
         {
             ArgumentNullException.ThrowIfNull(selector);
 
-            using (SqlConnection dbConnection = CreateConnection(_connectionString))
+            using (DbConnection dbConnection = CreateConnection(_factory, _connectionString))
             {
                 //Créer la commande sur base de l'argument recu en paramètre
-                using (SqlCommand dbCommand = CreateCommand(command, dbConnection))
+                using (DbCommand dbCommand = CreateCommand(command, dbConnection))
                 {                   
                     //ouvrir la connexion
                     dbConnection.Open();
                     //appeler la méthode ExecuteReader
-                    using(SqlDataReader dbDataReader = dbCommand.ExecuteReader())
+                    using(DbDataReader dbDataReader = dbCommand.ExecuteReader())
                     {
                         while(dbDataReader.Read())
                         {
@@ -106,12 +113,17 @@ namespace Tools
         public DataTable GetDataTable(Command command)
         {
             //Créer la connexion
-            using (SqlConnection dbConnection = CreateConnection(_connectionString))
+            using (DbConnection dbConnection = CreateConnection(_factory, _connectionString))
             {
                 //Créer la commande sur base de l'argument recu en paramètre
-                using (SqlCommand dbCommand = CreateCommand(command, dbConnection))
+                using (DbCommand dbCommand = CreateCommand(command, dbConnection))
                 {
-                    using (SqlDataAdapter dbDataAdapter = new SqlDataAdapter())
+                    DbDataAdapter? dbDataAdapter = _factory.CreateDataAdapter();
+
+                    if(dbDataAdapter is null)
+                        throw new InvalidOperationException("the prodiver can't create the data adapter");
+
+                    using (dbDataAdapter)
                     {
                         DataTable dataTable = new DataTable();
                         dbDataAdapter.SelectCommand = dbCommand;

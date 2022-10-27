@@ -18,7 +18,7 @@ namespace NetSecu_CorrectionAdo
 
         static void Main(string[] args)
         {
-            Connection connection = new Connection(CONNECTION_STRING);
+            Connection connection = new Connection(SqlClientFactory.Instance, CONNECTION_STRING);
 
             ////Exercice Récuperer les champs Id, LastName, FirstName depuis la vue V_Student en mode connecté
             //using (SqlConnection dbConnection = new SqlConnection())
