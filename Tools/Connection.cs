@@ -42,15 +42,11 @@ namespace Tools
                 dbCommand.CommandType = CommandType.StoredProcedure;
             }
 
-            foreach (KeyValuePair<string, Parameter> kvp in command.Parameters)
+            foreach (KeyValuePair<string, object> kvp in command.Parameters)
             {
                 DbParameter dbParameter = dbCommand.CreateParameter();
                 dbParameter.ParameterName = kvp.Key;
                 dbParameter.Value = kvp.Value;
-
-                if (kvp.Value.Direction is Direction.Output)
-                    dbParameter.Direction = ParameterDirection.InputOutput;
-
                 dbCommand.Parameters.Add(dbParameter);
             }
 
